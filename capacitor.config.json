@@ -1,0 +1,18 @@
+{
+  "appId": "com.sgbadminton.courts",
+  "appName": "SG Badminton Courts",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.onemap.gov.sg",
+      "*.openstreetmap.org",
+      "*.tile.openstreetmap.org"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}

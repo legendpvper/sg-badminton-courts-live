@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SG Outdoor Badminton Courts</title>
+
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:        #2d7a4f;
+      --green-light:  #e8f5ee;
+      --green-mid:    #4caf7d;
+      --accent:       #ff6b35;
+      --accent-light: #fff1ec;
+      --navy:         #0f1f2e;
+      --navy-mid:     #1c3448;
+      --slate:        #4a6070;
+      --muted:        #8fa3b0;
+      --border:       #dce8ef;
+      --bg:           #f4f7f9;
+      --white:        #ffffff;
+      --shadow-sm:    0 1px 3px rgba(15,31,46,.08), 0 1px 2px rgba(15,31,46,.06);
+      --shadow-md:    0 4px 16px rgba(15,31,46,.12), 0 2px 6px rgba(15,31,46,.08);
+      --shadow-lg:    0 8px 32px rgba(15,31,46,.16);
+      --radius-sm:    8px;
+      --radius-md:    12px;
+      --radius-lg:    18px;
+      --font-ui:      'DM Sans', sans-serif;
+      --font-display: 'Space Grotesk', sans-serif;
+    }
+
+    html, body { height: 100%; overflow: hidden; font-family: var(--font-ui); background: var(--bg); color: var(--navy); }
+
+    /* ── Layout shell ─────────────────────────────── */
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── Top header ───────────────────────────────── */
+    #header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 0 18px; height: 58px; flex-shrink: 0;
+      background: var(--navy);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      position: relative; z-index: 50;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--green); display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 18px; height: 18px; }
+    .logo-text {
+      font-family: var(--font-display); font-size: 15px; font-weight: 600;
+      color: #fff; white-space: nowrap; letter-spacing: -.2px;
+    }
+    .logo-text span { color: var(--green-mid); }
+
+    .divider-v { width: 1px; height: 22px; background: rgba(255,255,255,.12); flex-shrink: 0; }
+
+    #search-wrap { flex: 1; position: relative; max-width: 380px; }
+    #search {
+      width: 100%; height: 36px;
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      border-radius: var(--radius-sm); padding: 0 12px 0 36px;
+      font-size: 13.5px; color: #fff; font-family: var(--font-ui); outline: none;
+      transition: border-color .2s, background .2s;
+    }
+    #search::placeholder { color: rgba(255,255,255,.45); }
+    #search:focus { background: rgba(255,255,255,.16); border-color: var(--green-mid); }
+    .search-ico {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: rgba(255,255,255,.45); pointer-events: none;
+    }
+
+    /* filter pills */
+    #filters { display: flex; gap: 6px; align-items: center; }
+    .pill {
+      height: 30px; padding: 0 12px; border-radius: 100px;
+      border: 1px solid rgba(255,255,255,.2); background: transparent;
+      color: rgba(255,255,255,.65); font-size: 12.5px; font-family: var(--font-ui);
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .pill:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .pill.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 500; }
+
+    /* count chip */
+    #count-chip {
+      margin-left: auto; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 100px; padding: 3px 12px;
+      font-size: 12px; color: rgba(255,255,255,.7); white-space: nowrap; flex-shrink: 0;
+    }
+    #count-chip b { color: var(--green-mid); }
+
+    /* ── Main body ────────────────────────────────── */
+    #body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ──────────────────────────────────── */
+    #sidebar {
+      width: 310px; flex-shrink: 0; display: flex; flex-direction: column;
+      background: var(--white); border-right: 1px solid var(--border);
+      overflow: hidden; position: relative; z-index: 10;
+    }
+
+    #sidebar-header {
+      padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+    }
+    .sidebar-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: .06em; }
+
+    /* api status bar */
+    #api-status {
+      display: flex; align-items: center; gap: 7px;
+      margin-top: 8px; padding: 7px 10px; border-radius: var(--radius-sm);
+      background: var(--green-light); border: 1px solid #b8dfc8; font-size: 12px; color: var(--green);
+    }
+    #api-status.loading { background: #fff8e6; border-color: #f0d580; color: #7a5a00; }
+    #api-status.error   { background: #fef0f0; border-color: #f5b8b8; color: #9b1c1c; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    #api-status.loading .status-dot { background: #e6a800; animation: pulse 1s infinite; }
+    #api-status.error .status-dot   { background: #e02424; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    #court-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    #court-list::-webkit-scrollbar { width: 4px; }
+    #court-list::-webkit-scrollbar-track { background: transparent; }
+    #court-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .court-card {
+      padding: 11px 16px; cursor: pointer; border-bottom: 1px solid var(--border);
+      transition: background .12s; position: relative;
+    }
+    .court-card:hover { background: var(--bg); }
+    .court-card.active { background: var(--green-light); border-left: 3px solid var(--green); padding-left: 13px; }
+    .court-card.geocoded::after {
+      content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green-mid);
+    }
+
+    .card-name { font-size: 13.5px; font-weight: 500; color: var(--navy); margin-bottom: 2px; }
+    .card-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+
+    .tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 400;
+    }
+    .tag-free     { background: var(--green-light); color: var(--green); }
+    .tag-lights   { background: #fff8e6; color: #7a5a00; }
+    .tag-covered  { background: #e6f4ff; color: #0057a8; }
+    .tag-multi    { background: #f3eeff; color: #5b21b6; }
+    .tag-verified { background: #f0fff4; color: #16630a; border: 1px solid #b0e8c0; }
+
+    #no-results {
+      padding: 32px 20px; text-align: center; color: var(--muted);
+      font-size: 13.5px; display: none;
+    }
+    #no-results svg { display: block; margin: 0 auto 10px; }
+
+    /* ── Map wrapper ──────────────────────────────── */
+    #map-wrap { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    /* Custom Leaflet icon styles */
+    .court-marker {
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Detail panel (bottom popup on map) ───────── */
+    #detail {
+      position: absolute; bottom: 20px; right: 20px;
+      width: 300px; background: var(--white);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border); z-index: 400;
+      overflow: hidden; display: none;
+      animation: slideUp .22s ease;
+    }
+    #detail.show { display: block; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+    .detail-header {
+      background: var(--navy); padding: 14px 16px 12px;
+      position: relative;
+    }
+    .detail-close {
+      position: absolute; right: 12px; top: 10px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(255,255,255,.15); border: none; cursor: pointer;
+      color: rgba(255,255,255,.8); font-size: 16px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .detail-close:hover { background: rgba(255,255,255,.25); }
+    .detail-name { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; color: #fff; padding-right: 30px; margin-bottom: 3px; }
+    .detail-area { font-size: 12px; color: rgba(255,255,255,.55); }
+
+    .detail-body { padding: 14px 16px; }
+    .detail-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; font-size: 13px; color: var(--slate); }
+    .detail-row svg { flex-shrink: 0; color: var(--muted); margin-top: 1px; }
+    .detail-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+    .detail-note { font-size: 12.5px; color: var(--muted); line-height: 1.55; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
+
+    .detail-coords {
+      font-size: 11.5px; color: var(--muted); font-family: monospace;
+      background: var(--bg); border-radius: 6px; padding: 6px 10px; margin-top: 8px;
+    }
+    .detail-coords span { color: var(--green); }
+
+    .btn-directions {
+      display: flex; align-items: center; gap: 6px; justify-content: center;
+      width: 100%; height: 36px; border-radius: var(--radius-sm);
+      background: var(--green); color: #fff; border: none;
+      font-family: var(--font-ui); font-size: 13px; font-weight: 500;
+      cursor: pointer; margin-top: 12px; transition: background .15s;
+      text-decoration: none;
+    }
+    .btn-directions:hover { background: #236040; }
+
+    /* ── My location button ───────────────────────── */
+    #locate-btn {
+      position: absolute; top: 16px; right: 16px; z-index: 400;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: var(--shadow-md); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--slate); transition: all .15s;
+    }
+    #locate-btn:hover { background: var(--green-light); color: var(--green); border-color: var(--green); }
+
+    /* ── Geocode progress overlay ─────────────────── */
+    #geocode-overlay {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 500; background: var(--white);
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md); padding: 10px 18px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--navy);
+    }
+    #geocode-overlay.hidden { display: none; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid var(--border);
+      border-top-color: var(--green); border-radius: 50%;
+      animation: spin .7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Leaflet overrides ────────────────────────── */
+    .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid var(--border); box-shadow: var(--shadow-md); }
+    .leaflet-popup-content { margin: 10px 14px; font-family: var(--font-ui); font-size: 13px; }
+    .leaflet-popup-tip-container { display: none; }
+    .leaflet-control-zoom { border: 1px solid var(--border) !important; border-radius: var(--radius-sm) !important; box-shadow: var(--shadow-sm) !important; overflow: hidden; }
+    .leaflet-control-zoom a { color: var(--navy) !important; font-weight: 400 !important; }
+
+    /* ── User location dot ────────────────────────── */
+    .user-dot { width: 16px; height: 16px; }
+    .user-dot-inner {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 3px rgba(26,115,232,.3);
+    }
+
+    /* ── Responsive ───────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+      #body { flex-direction: column; }
+      #map-wrap { min-height: 200px; }
+      #detail { left: 10px; right: 10px; width: auto; bottom: 10px; }
+      .logo-text { display: none; }
+      #count-chip { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ──────────────────────────────────── -->
+  <header id="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+        </svg>
+      </div>
+      <div class="logo-text">SG <span>Badminton</span> Courts</div>
+    </div>
+
+    <div class="divider-v"></div>
+
+    <div id="search-wrap">
+      <svg class="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search" type="text" placeholder="Search estate, block, street…" autocomplete="off">
+    </div>
+
+    <div id="filters">
+      <button class="pill active" data-filter="all">All courts</button>
+      <button class="pill" data-filter="lights">Night lights</button>
+      <button class="pill" data-filter="covered">Covered</button>
+      <button class="pill" data-filter="multi">Multi-use</button>
+    </div>
+
+    <div id="count-chip"><b id="count-num">38</b> courts</div>
+  </header>
+
+  <!-- ── Body ────────────────────────────────────── -->
+  <div id="body">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <div class="sidebar-title">Outdoor Courts</div>
+        <div id="api-status" class="loading">
+          <div class="status-dot"></div>
+          <span id="api-status-text">Connecting to OneMap API…</span>
+        </div>
+      </div>
+      <div id="court-list"></div>
+      <div id="no-results">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6M11 8v6" opacity=".4"/></svg>
+        No courts match your search
+      </div>
+    </aside>
+
+    <!-- Map -->
+    <div id="map-wrap">
+      <div id="map"></div>
+
+      <!-- Geocoding progress overlay -->
+      <div id="geocode-overlay">
+        <div class="spinner"></div>
+        <span id="geocode-progress">Geocoding courts via OneMap… <b id="geocode-count">0 / 38</b></span>
+      </div>
+
+      <!-- Locate me button -->
+      <button id="locate-btn" title="Find my location">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      </button>
+
+      <!-- Detail panel -->
+      <div id="detail">
+        <div class="detail-header">
+          <button class="detail-close" id="detail-close">×</button>
+          <div class="detail-name" id="detail-name">Court Name</div>
+          <div class="detail-area" id="detail-area">Area</div>
+        </div>
+        <div class="detail-body">
+          <div class="detail-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="detail-addr">Address</span>
+          </div>
+          <div class="detail-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span id="detail-courts">2 courts available</span>
+          </div>
+          <div class="detail-tags" id="detail-tags"></div>
+          <div class="detail-coords" id="detail-coords"></div>
+          <div class="detail-note" id="detail-note"></div>
+          <a class="btn-directions" id="detail-directions" href="#" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            Get Directions (Google Maps)
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  COURT DATA
+//  Addresses are fed to OneMap API for live geocoding.
+//  lat/lng here are fallback values (used if API fails).
+// ═══════════════════════════════════════════════════════
+const COURTS = [
+  // HOUGANG
+  { id:1,  name:"Blk 306 Hougang Ave 5",     area:"Hougang",      addr:"306 Hougang Avenue 5 Singapore",     lat:1.3721, lng:103.8921, lights:true,  covered:false, multi:false, courts:2, note:"Your home court. Open-air community court. Very popular for evening sessions. Free access for all residents." },
+  { id:2,  name:"Blk 104 Hougang Ave 1",     area:"Hougang",      addr:"104 Hougang Avenue 1 Singapore",     lat:1.3698, lng:103.8897, lights:true,  covered:false, multi:true,  courts:2, note:"Multi-purpose court shared with basketball. Well lit at night. Active community." },
+  { id:3,  name:"Blk 413 Hougang Ave 10",    area:"Hougang",      addr:"413 Hougang Avenue 10 Singapore",    lat:1.3740, lng:103.8933, lights:true,  covered:false, multi:false, courts:2, note:"Community court. Free access. Convenient to Hougang MRT station." },
+  { id:4,  name:"Blk 621 Hougang Ave 8",     area:"Hougang",      addr:"621 Hougang Avenue 8 Singapore",     lat:1.3762, lng:103.8944, lights:false, covered:false, multi:true,  courts:1, note:"Outdoor multi-purpose court. Daytime use recommended — no lights." },
+  // TAMPINES
+  { id:5,  name:"Blk 501 Tampines Ave 4",    area:"Tampines",     addr:"501 Tampines Avenue 4 Singapore",    lat:1.3547, lng:103.9412, lights:true,  covered:false, multi:false, courts:2, note:"Large open court in Tampines. Very active badminton community. Free to use." },
+  { id:6,  name:"Blk 827 Tampines St 81",    area:"Tampines",     addr:"827 Tampines Street 81 Singapore",   lat:1.3522, lng:103.9451, lights:true,  covered:true,  multi:false, courts:2, note:"Sheltered outdoor court — great for light drizzle conditions. Well maintained." },
+  { id:7,  name:"Blk 159 Tampines St 12",    area:"Tampines",     addr:"159 Tampines Street 12 Singapore",   lat:1.3503, lng:103.9367, lights:true,  covered:false, multi:true,  courts:2, note:"Near Tampines Round Market. Multi-use with basketball markings." },
+  { id:8,  name:"Blk 490 Tampines Ave 9",    area:"Tampines",     addr:"490 Tampines Avenue 9 Singapore",    lat:1.3560, lng:103.9440, lights:true,  covered:false, multi:false, courts:2, note:"Quieter side of Tampines. Courts often available even on weekends." },
+  // BEDOK
+  { id:9,  name:"Blk 601 Bedok North St 3",  area:"Bedok",        addr:"601 Bedok North Street 3 Singapore", lat:1.3364, lng:103.9263, lights:true,  covered:false, multi:false, courts:2, note:"Dedicated badminton courts. Well-maintained synthetic surface." },
+  { id:10, name:"Blk 56 New Upper Changi Rd",area:"Bedok",        addr:"56 New Upper Changi Road Singapore", lat:1.3247, lng:103.9301, lights:true,  covered:false, multi:true,  courts:2, note:"Active neighbourhood court near Bedok MRT. Busy on evenings." },
+  // PASIR RIS
+  { id:11, name:"Blk 201 Pasir Ris St 21",   area:"Pasir Ris",    addr:"201 Pasir Ris Street 21 Singapore",  lat:1.3703, lng:103.9499, lights:true,  covered:false, multi:false, courts:2, note:"Spacious outdoor court close to Pasir Ris Park. Breezy evenings." },
+  { id:12, name:"Blk 449 Pasir Ris Dr 6",    area:"Pasir Ris",    addr:"449 Pasir Ris Drive 6 Singapore",    lat:1.3735, lng:103.9527, lights:true,  covered:true,  multi:false, courts:2, note:"Covered pavilion court. Great all-weather option in the east." },
+  // JURONG EAST
+  { id:13, name:"Blk 211 Jurong East St 21", area:"Jurong East",  addr:"211 Jurong East Street 21 Singapore",lat:1.3423, lng:103.7363, lights:true,  covered:false, multi:false, courts:2, note:"Popular courts in Jurong East. Free access all day. Good surface." },
+  { id:14, name:"Blk 131 Jurong Gateway Rd", area:"Jurong East",  addr:"131 Jurong Gateway Road Singapore",  lat:1.3330, lng:103.7402, lights:true,  covered:false, multi:false, courts:2, note:"Very central for west-siders. Near JEM and Westgate malls." },
+  // JURONG WEST
+  { id:15, name:"Blk 339 Yung Ho Rd",        area:"Jurong West",  addr:"339 Yung Ho Road Singapore",         lat:1.3487, lng:103.7196, lights:false, covered:false, multi:true,  courts:1, note:"Small community court. Quieter area, daytime play." },
+  { id:16, name:"Blk 505 Jurong West Ave 1",  area:"Jurong West",  addr:"505 Jurong West Avenue 1 Singapore", lat:1.3501, lng:103.7122, lights:true,  covered:false, multi:false, courts:2, note:"Well-used community courts near Boon Lay MRT." },
+  // WOODLANDS
+  { id:17, name:"Blk 303 Woodlands St 31",    area:"Woodlands",    addr:"303 Woodlands Street 31 Singapore",  lat:1.4362, lng:103.7883, lights:true,  covered:false, multi:false, courts:2, note:"Northern Singapore courts near Woodlands MRT." },
+  { id:18, name:"Blk 689 Woodlands Dr 75",    area:"Woodlands",    addr:"689 Woodlands Drive 75 Singapore",   lat:1.4401, lng:103.7946, lights:true,  covered:true,  multi:false, courts:2, note:"Covered courts near Woodlands Civic Centre. Rain-friendly." },
+  // SEMBAWANG
+  { id:19, name:"Blk 401 Sembawang Dr",       area:"Sembawang",    addr:"401 Sembawang Drive Singapore",      lat:1.4490, lng:103.8191, lights:false, covered:false, multi:true,  courts:2, note:"Neighbourhood court. Best used in mornings and evenings." },
+  // YISHUN
+  { id:20, name:"Blk 511 Yishun Ave 4",       area:"Yishun",       addr:"511 Yishun Avenue 4 Singapore",      lat:1.4263, lng:103.8336, lights:true,  covered:false, multi:false, courts:2, note:"Busy court near Yishun MRT. Free, very popular with residents." },
+  { id:21, name:"Blk 702 Yishun Ave 5",       area:"Yishun",       addr:"702 Yishun Avenue 5 Singapore",      lat:1.4241, lng:103.8367, lights:true,  covered:false, multi:true,  courts:2, note:"Near Yishun Bus Interchange. Often used for casual games." },
+  // ANG MO KIO
+  { id:22, name:"Blk 101 Ang Mo Kio Ave 2",   area:"Ang Mo Kio",   addr:"101 Ang Mo Kio Avenue 2 Singapore",  lat:1.3716, lng:103.8464, lights:true,  covered:false, multi:false, courts:2, note:"Classic HDB estate court. Well maintained by town council." },
+  { id:23, name:"Blk 347 Ang Mo Kio Ave 3",   area:"Ang Mo Kio",   addr:"347 Ang Mo Kio Avenue 3 Singapore",  lat:1.3691, lng:103.8501, lights:true,  covered:false, multi:true,  courts:2, note:"Multi-use with basketball. Good lighting at night." },
+  // BISHAN
+  { id:24, name:"Blk 402 Bishan St 22",       area:"Bishan",       addr:"402 Bishan Street 22 Singapore",     lat:1.3527, lng:103.8454, lights:true,  covered:false, multi:false, courts:2, note:"Near Bishan Park. Clean, well-maintained courts." },
+  // TOA PAYOH
+  { id:25, name:"Blk 201 Toa Payoh Lor 2",    area:"Toa Payoh",    addr:"201 Toa Payoh Lorong 2 Singapore",   lat:1.3343, lng:103.8479, lights:true,  covered:false, multi:false, courts:2, note:"Central Singapore. Very popular neighbourhood courts." },
+  // REDHILL / QUEENSTOWN / BUKIT MERAH
+  { id:26, name:"Blk 76 Redhill Rd",          area:"Redhill",      addr:"76 Redhill Road Singapore",          lat:1.2900, lng:103.8180, lights:false, covered:false, multi:true,  courts:1, note:"Older estate courts near Redhill MRT." },
+  { id:27, name:"Blk 152 Queenstown Rd",      area:"Queenstown",   addr:"152 Queenstown Road Singapore",      lat:1.2985, lng:103.8063, lights:true,  covered:false, multi:false, courts:2, note:"Near Queensway Shopping Centre. Free access." },
+  { id:28, name:"Blk 115 Bukit Merah View",   area:"Bukit Merah",  addr:"115 Bukit Merah View Singapore",     lat:1.2827, lng:103.8209, lights:true,  covered:true,  multi:false, courts:2, note:"Sheltered court. Great for all-weather badminton in the south." },
+  // CLEMENTI / WEST COAST
+  { id:29, name:"Blk 503 Clementi Ave 3",     area:"Clementi",     addr:"503 Clementi Avenue 3 Singapore",    lat:1.3148, lng:103.7640, lights:true,  covered:false, multi:false, courts:2, note:"Popular with NUS students and residents alike." },
+  { id:30, name:"Blk 511 West Coast Rd",      area:"West Coast",   addr:"511 West Coast Road Singapore",      lat:1.3049, lng:103.7694, lights:true,  covered:false, multi:false, courts:2, note:"Quiet west coast area. Courts often available." },
+  // GEYLANG / SERANGOON
+  { id:31, name:"Blk 62 Geylang Bahru",       area:"Geylang",      addr:"62 Geylang Bahru Singapore",         lat:1.3180, lng:103.8679, lights:true,  covered:false, multi:false, courts:2, note:"Central-east area. Busy courts — arrive early on weekends." },
+  { id:32, name:"Blk 212 Serangoon Ave 4",    area:"Serangoon",    addr:"212 Serangoon Avenue 4 Singapore",   lat:1.3617, lng:103.8741, lights:true,  covered:false, multi:false, courts:2, note:"Well-loved community court. Active badminton community." },
+  // SENGKANG / PUNGGOL / BUANGKOK
+  { id:33, name:"Blk 107 Sengkang East Way",  area:"Sengkang",     addr:"107 Sengkang East Way Singapore",    lat:1.3924, lng:103.9003, lights:true,  covered:false, multi:false, courts:2, note:"Newer estate, good court surface." },
+  { id:34, name:"Blk 276C Punggol Field",     area:"Punggol",      addr:"276C Punggol Field Singapore",       lat:1.4038, lng:103.9099, lights:true,  covered:false, multi:false, courts:2, note:"New Punggol estate courts. Very well-maintained." },
+  { id:35, name:"Blk 601 Punggol Central",    area:"Punggol",      addr:"601 Punggol Central Singapore",      lat:1.4011, lng:103.9019, lights:true,  covered:true,  multi:false, courts:2, note:"Covered courts near Punggol MRT. Rain-friendly option." },
+  { id:36, name:"Blk 101 Buangkok Crescent",  area:"Buangkok",     addr:"101 Buangkok Crescent Singapore",    lat:1.3849, lng:103.8896, lights:true,  covered:false, multi:true,  courts:2, note:"Near Buangkok MRT. Shared with basketball." },
+  // CHOA CHU KANG / BUKIT BATOK
+  { id:37, name:"Blk 301 Choa Chu Kang Ave 2",area:"Choa Chu Kang",addr:"301 Choa Chu Kang Avenue 2 Singapore",lat:1.3854,lng:103.7453, lights:true,  covered:false, multi:false, courts:2, note:"North-west courts. Free, open access." },
+  { id:38, name:"Blk 452 Bukit Batok West Ave 6",area:"Bukit Batok",addr:"452 Bukit Batok West Avenue 6 Singapore",lat:1.3491,lng:103.7518,lights:false,covered:false, multi:true,  courts:2, note:"Community court near Bukit Batok nature park." },
+];
+
+// ═══════════════════════════════════════════════
+//  SERVER BASE URL — auto-detects environment
+//  PC browser  → uses local Express proxy (same origin)
+//  Android APK → calls OneMap API directly (no proxy needed)
+// ═══════════════════════════════════════════════
+const IS_ANDROID_APP = !window.location.hostname || 
+                        window.location.hostname === '' ||
+                        window.location.protocol === 'capacitor:' ||
+                        window.location.protocol === 'ionic:' ||
+                        window.location.protocol === 'file:';
+
+// OneMap public search API — free, no key, works from any origin
+const ONEMAP_SEARCH = 'https://www.onemap.gov.sg/api/common/elastic/search';
+
+// ═══════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════
+const state = {
+  courts: COURTS.map(c => ({ ...c, geocoded: false })),
+  selected: null,
+  filter: 'all',
+  search: '',
+  userLat: null,
+  userLng: null,
+};
+
+let map, markers = {}, userMarker = null;
+
+// ═══════════════════════════════════════════════
+//  INIT MAP  (OpenStreetMap tiles + OneMap geocoding)
+// ═══════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: true })
+    .setView([1.3521, 103.8198], 12);
+
+  // OpenStreetMap tiles — reliable, no auth required
+  // OneMap API is still used for geocoding (server.js proxy)
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors ' +
+        '| Geocoding by <a href="https://www.onemap.gov.sg/" target="_blank">OneMap</a> &copy; Singapore Land Authority',
+    }
+  ).addTo(map);
+
+  // Zoom control positioned top-left
+  L.control.zoom({ position: 'topleft' }).addTo(map);
+}
+
+// ═══════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════
+function makeIcon(active, geocoded) {
+  const color  = active   ? '#ff6b35' : '#2d7a4f';
+  const ring   = active   ? '#ffcdb8' : '#a8d9bc';
+  const size   = active   ? 36 : 30;
+  const dot    = active   ? 8 : 6;
+
+  const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${ring}" opacity="0.5"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${dot}" fill="${color}"/>
+    ${geocoded ? `<circle cx="${size/2}" cy="${size/2}" r="${dot-2}" fill="white" opacity="0.6"/>` : ''}
+  </svg>`;
+
+  return L.divIcon({
+    className: '',
+    html: svg,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2],
+    popupAnchor: [0, -size/2 - 4],
+  });
+}
+
+function placeMarkers() {
+  state.courts.forEach(c => {
+    const m = L.marker([c.lat, c.lng], { icon: makeIcon(false, c.geocoded) })
+      .addTo(map)
+      .on('click', () => selectCourt(c.id));
+    markers[c.id] = m;
+  });
+}
+
+function refreshMarkers() {
+  const visible = filteredCourts().map(c => c.id);
+  state.courts.forEach(c => {
+    const m = markers[c.id];
+    if (!m) return;
+    const isVisible = visible.includes(c.id);
+    const isActive  = c.id === state.selected;
+    m.setIcon(makeIcon(isActive, c.geocoded));
+    m.setOpacity(isVisible ? 1 : 0.2);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  GEOCODING  (via local proxy → OneMap API)
+// ═══════════════════════════════════════════════
+// Single-court geocode — calls OneMap directly from the browser/app
+// No server proxy needed. Works on Android APK and PC browser alike.
+async function geocodeOneCourt(court) {
+  const url = `${ONEMAP_SEARCH}?searchVal=${encodeURIComponent(court.addr)}&returnGeom=Y&getAddrDetails=Y&pageNum=1`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`OneMap ${resp.status}`);
+  const data = await resp.json();
+  if (data.results && data.results.length > 0) {
+    const r = data.results[0];
+    return {
+      lat:     parseFloat(r.LATITUDE),
+      lng:     parseFloat(r.LONGITUDE),
+      address: r.ADDRESS,
+      postal:  r.POSTAL,
+    };
+  }
+  return null;
+}
+
+async function geocodeAllCourts() {
+  const overlay  = document.getElementById('geocode-overlay');
+  const countEl  = document.getElementById('geocode-count');
+  const statusEl = document.getElementById('api-status');
+  const statusTx = document.getElementById('api-status-text');
+
+  let done = 0;
+  const total = state.courts.length;
+
+  statusEl.className = 'loading';
+  statusTx.textContent = 'Connecting to OneMap API…';
+
+  // ── Strategy 1: Try PC Express proxy (fast batch, works on localhost) ──
+  if (!IS_ANDROID_APP) {
+    try {
+      const body = JSON.stringify({
+        courts: state.courts.map(c => ({ id: c.id, addr: c.addr }))
+      });
+      const resp = await fetch('/api/geocode-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!resp.ok) throw new Error(`Proxy ${resp.status}`);
+      const data = await resp.json();
+
+      state.courts.forEach(c => {
+        const geo = data.results[c.id];
+        if (geo && geo.lat && !isNaN(geo.lat)) {
+          c.lat = geo.lat; c.lng = geo.lng;
+          c.geocodedAddr = geo.address; c.postal = geo.postal;
+          c.geocoded = true;
+          if (markers[c.id]) {
+            markers[c.id].setLatLng([c.lat, c.lng]);
+            markers[c.id].setIcon(makeIcon(c.id === state.selected, true));
+          }
+        }
+        done++;
+        countEl.textContent = `${done} / ${total}`;
+      });
+
+      const n = state.courts.filter(c => c.geocoded).length;
+      statusEl.className = ''; 
+      statusTx.textContent = `OneMap API · ${n} courts live-geocoded`;
+      overlay.classList.add('hidden');
+      renderList(); refreshMarkers();
+      return;
+    } catch (e) {
+      console.warn('Proxy batch failed, falling back to direct API…', e.message);
+      done = 0;
+    }
+  }
+
+  // ── Strategy 2: Call OneMap directly (works on Android APK + PC) ──
+  statusTx.textContent = 'Geocoding courts via OneMap…';
+  let successCount = 0;
+
+  for (const c of state.courts) {
+    try {
+      const geo = await geocodeOneCourt(c);
+      if (geo && !isNaN(geo.lat)) {
+        c.lat = geo.lat; c.lng = geo.lng;
+        c.geocodedAddr = geo.address; c.postal = geo.postal;
+        c.geocoded = true; successCount++;
+        if (markers[c.id]) {
+          markers[c.id].setLatLng([c.lat, c.lng]);
+          markers[c.id].setIcon(makeIcon(c.id === state.selected, true));
+        }
+      }
+    } catch (e) {
+      console.warn(`Geocode failed for court ${c.id}:`, e.message);
+    }
+    done++;
+    countEl.textContent = `${done} / ${total}`;
+    // Polite rate-limit: 150ms between calls
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  if (successCount > 0) {
+    statusEl.className = '';
+    statusTx.textContent = `OneMap API · ${successCount}/${total} courts live-geocoded`;
+  } else {
+    statusEl.className = 'error';
+    statusTx.textContent = 'OneMap API unavailable · showing fallback locations';
+  }
+
+  overlay.classList.add('hidden');
+  renderList();
+  refreshMarkers();
+}
+
+// ═══════════════════════════════════════════════
+//  FILTERING & RENDERING
+// ═══════════════════════════════════════════════
+function filteredCourts() {
+  const q = state.search.toLowerCase();
+  return state.courts.filter(c => {
+    const matchFilter =
+      state.filter === 'all'    ||
+      (state.filter === 'lights'  && c.lights)  ||
+      (state.filter === 'covered' && c.covered) ||
+      (state.filter === 'multi'   && c.multi);
+    const matchSearch =
+      !q ||
+      c.name.toLowerCase().includes(q)  ||
+      c.area.toLowerCase().includes(q)  ||
+      c.addr.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+}
+
+function tagsHTML(c) {
+  const tags = [{ cls: 'tag-free', label: 'Free' }];
+  if (c.lights)   tags.push({ cls: 'tag-lights',   label: 'Night lights' });
+  if (c.covered)  tags.push({ cls: 'tag-covered',  label: 'Covered' });
+  if (c.multi)    tags.push({ cls: 'tag-multi',     label: 'Multi-use' });
+  if (c.geocoded) tags.push({ cls: 'tag-verified',  label: '✓ OneMap verified' });
+  return tags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('');
+}
+
+function renderList() {
+  const list    = document.getElementById('court-list');
+  const noRes   = document.getElementById('no-results');
+  const countEl = document.getElementById('count-num');
+  const courts  = filteredCourts();
+
+  countEl.textContent = courts.length;
+  noRes.style.display = courts.length ? 'none' : 'block';
+
+  list.innerHTML = courts.map(c => `
+    <div class="court-card${c.id === state.selected ? ' active' : ''}${c.geocoded ? ' geocoded' : ''}" data-id="${c.id}">
+      <div class="card-name">${c.name}</div>
+      <div class="card-meta">${c.area} · ${c.courts} court${c.courts > 1 ? 's' : ''}</div>
+      <div class="card-tags">${tagsHTML(c)}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.court-card').forEach(el => {
+    el.addEventListener('click', () => selectCourt(+el.dataset.id));
+  });
+
+  refreshMarkers();
+}
+
+// ═══════════════════════════════════════════════
+//  COURT SELECTION
+// ═══════════════════════════════════════════════
+function selectCourt(id) {
+  state.selected = id;
+  const c = state.courts.find(x => x.id === id);
+  if (!c) return;
+
+  renderList();
+  map.setView([c.lat, c.lng], 16, { animate: true });
+
+  // Populate detail panel
+  document.getElementById('detail-name').textContent   = c.name;
+  document.getElementById('detail-area').textContent   = c.area;
+  document.getElementById('detail-addr').textContent   = c.geocodedAddr || c.addr;
+  document.getElementById('detail-courts').textContent = `${c.courts} court${c.courts > 1 ? 's' : ''} available · Free access`;
+  document.getElementById('detail-tags').innerHTML     = tagsHTML(c);
+  document.getElementById('detail-note').textContent   = c.note;
+
+  const coordsEl = document.getElementById('detail-coords');
+  coordsEl.innerHTML = `<span>Lat</span> ${c.lat.toFixed(6)}  <span>Lng</span> ${c.lng.toFixed(6)}${c.postal ? `  <span>Postal</span> ${c.postal}` : ''}`;
+
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
+  document.getElementById('detail-directions').href = mapsUrl;
+
+  document.getElementById('detail').classList.add('show');
+
+  // Scroll sidebar card into view
+  const card = document.querySelector(`.court-card[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════
+//  GEOLOCATION
+// ═══════════════════════════════════════════════
+function locateUser() {
+  if (!navigator.geolocation) return alert('Geolocation not supported by your browser.');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    state.userLat = lat;
+    state.userLng = lng;
+
+    if (userMarker) map.removeLayer(userMarker);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="user-dot"><div class="user-dot-inner"></div></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+    userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 })
+      .addTo(map)
+      .bindPopup('You are here');
+    map.setView([lat, lng], 15, { animate: true });
+  }, () => alert('Could not get your location. Please enable location permissions.'));
+}
+
+// ═══════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════
+function wireEvents() {
+  document.getElementById('search').addEventListener('input', e => {
+    state.search = e.target.value;
+    renderList();
+  });
+
+  document.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.filter = btn.dataset.filter;
+      renderList();
+    });
+  });
+
+  document.getElementById('detail-close').addEventListener('click', () => {
+    document.getElementById('detail').classList.remove('show');
+    state.selected = null;
+    renderList();
+  });
+
+  document.getElementById('locate-btn').addEventListener('click', locateUser);
+
+  map.on('click', () => {
+    document.getElementById('detail').classList.remove('show');
+    state.selected = null;
+    renderList();
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  BOOTSTRAP
+// ═══════════════════════════════════════════════
+(async function init() {
+  initMap();
+  placeMarkers();
+  renderList();
+  wireEvents();
+
+  // Start geocoding after a short delay so map renders first
+  setTimeout(geocodeAllCourts, 800);
+})();
+</script>
+</body>
+</html>

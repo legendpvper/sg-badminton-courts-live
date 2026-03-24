@@ -1,0 +1,18 @@
+{
+  "name": "sg-outdoor-badminton-courts",
+  "version": "1.0.0",
+  "description": "Singapore Outdoor Badminton Courts Finder with OneMap API integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}
