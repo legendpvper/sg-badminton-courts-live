@@ -277,6 +277,53 @@
       .logo-text { display: none; }
       #count-chip { display: none; }
     }
+	/* ── Availability status ───────────────────────── */
+	.avail-badge {
+	  display: inline-flex; align-items: center; gap: 5px;
+	  font-size: 11.5px; font-weight: 500; padding: 3px 9px;
+	  border-radius: 100px; margin-top: 5px;
+	}
+	.avail-badge.available { background: var(--green-light); color: var(--green); }
+	.avail-badge.occupied  { background: #fef0f0; color: #c0392b; }
+	.avail-badge.unknown   { background: var(--bg); color: var(--muted); }
+	.avail-dot {
+	  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+	}
+	.available .avail-dot { background: var(--green); }
+	.occupied  .avail-dot { background: #c0392b; }
+	.unknown   .avail-dot { background: var(--muted); }
+
+	/* availability buttons in detail panel */
+	.avail-actions {
+	  display: flex; gap: 8px; margin-top: 12px;
+	}
+	.btn-avail {
+	  flex: 1; height: 36px; border-radius: var(--radius-sm);
+	  border: 1.5px solid; font-family: var(--font-ui); font-size: 13px;
+	  font-weight: 500; cursor: pointer; transition: all .15s;
+	  display: flex; align-items: center; justify-content: center; gap: 6px;
+	}
+	.btn-avail.btn-occupied {
+	  background: #fef0f0; border-color: #f5b8b8; color: #c0392b;
+	}
+	.btn-avail.btn-occupied:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+	.btn-avail.btn-free {
+	  background: var(--green-light); border-color: #b8dfc8; color: var(--green);
+	}
+	.btn-avail.btn-free:hover { background: var(--green); color: #fff; border-color: var(--green); }
+	.btn-avail:disabled { opacity: 0.45; cursor: not-allowed; }
+
+	.avail-updated {
+	  font-size: 11px; color: var(--muted); text-align: center;
+	  margin-top: 6px;
+	}
+
+	.court-card.occupied {
+	  opacity: 0.5;
+	}
+	.court-card.occupied:hover {
+	  opacity: 0.75;
+	}
   </style>
 </head>
 <body>
@@ -306,6 +353,7 @@
       <button class="pill" data-filter="lights">Night lights</button>
       <button class="pill" data-filter="covered">Covered</button>
       <button class="pill" data-filter="multi">Multi-use</button>
+	  <button class="pill" data-filter="available">Available</button>
     </div>
 
     <div id="count-chip"><b id="count-num">38</b> courts</div>
@@ -365,9 +413,27 @@
           <div class="detail-coords" id="detail-coords"></div>
           <div class="detail-note" id="detail-note"></div>
           <a class="btn-directions" id="detail-directions" href="#" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-            Get Directions (Google Maps)
-          </a>
+			  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+			  Get Directions (Google Maps)
+			</a>
+
+			<!-- Availability -->
+			<div style="border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;">
+			  <div style="font-size: 12px; font-weight: 600; color: var(--slate); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em;">Court Availability</div>
+			  <div id="detail-avail-badge" class="avail-badge unknown">
+				<div class="avail-dot"></div>
+				<span>Unknown</span>
+			  </div>
+			  <div class="avail-actions">
+				<button class="btn-avail btn-occupied" id="btn-mark-occupied">
+				  🔴 Mark Occupied
+				</button>
+				<button class="btn-avail btn-free" id="btn-mark-available">
+				  🟢 Mark Available
+				</button>
+			  </div>
+			  <div class="avail-updated" id="avail-updated"></div>
+			</div>
         </div>
       </div>
     </div>
@@ -492,11 +558,17 @@ function initMap() {
 // ═══════════════════════════════════════════════
 //  MARKERS
 // ═══════════════════════════════════════════════
-function makeIcon(active, geocoded) {
-  const color  = active   ? '#ff6b35' : '#2d7a4f';
-  const ring   = active   ? '#ffcdb8' : '#a8d9bc';
-  const size   = active   ? 36 : 30;
-  const dot    = active   ? 8 : 6;
+function makeIcon(active, geocoded, courtId) {
+  const s = availStatuses[courtId];
+  const availColor = s?.status === 'occupied' ? '#c0392b'
+                   : s?.status === 'available' ? '#2d7a4f'
+                   : '#2d7a4f';
+  const color  = active ? '#ff6b35' : availColor;
+  const ring   = active ? '#ffcdb8'
+               : s?.status === 'occupied' ? '#f5b8b8'
+               : '#a8d9bc';
+  const size   = active ? 36 : 30;
+  const dot    = active ? 8 : 6;
 
   const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${size/2}" cy="${size/2}" r="${size/2-1}" fill="${ring}" opacity="0.5"/>
@@ -515,7 +587,7 @@ function makeIcon(active, geocoded) {
 
 function placeMarkers() {
   state.courts.forEach(c => {
-    const m = L.marker([c.lat, c.lng], { icon: makeIcon(false, c.geocoded) })
+    const m = L.marker([c.lat, c.lng], { icon: makeIcon(false, c.geocoded, c.id) })
       .addTo(map)
       .on('click', () => selectCourt(c.id));
     markers[c.id] = m;
@@ -529,7 +601,7 @@ function refreshMarkers() {
     if (!m) return;
     const isVisible = visible.includes(c.id);
     const isActive  = c.id === state.selected;
-    m.setIcon(makeIcon(isActive, c.geocoded));
+    m.setIcon(makeIcon(isActive, c.geocoded, c.id));
     m.setOpacity(isVisible ? 1 : 0.2);
   });
 }
@@ -655,10 +727,11 @@ function filteredCourts() {
   const q = state.search.toLowerCase();
   return state.courts.filter(c => {
     const matchFilter =
-      state.filter === 'all'    ||
-      (state.filter === 'lights'  && c.lights)  ||
-      (state.filter === 'covered' && c.covered) ||
-      (state.filter === 'multi'   && c.multi);
+	 state.filter === 'all'    ||
+	 (state.filter === 'lights'    && c.lights)  ||
+	 (state.filter === 'covered'   && c.covered) ||
+	 (state.filter === 'multi'     && c.multi)   ||
+	 (state.filter === 'available' && availStatuses[c.id]?.status !== 'occupied');
     const matchSearch =
       !q ||
       c.name.toLowerCase().includes(q)  ||
@@ -683,12 +756,25 @@ function renderList() {
   const countEl = document.getElementById('count-num');
   const courts  = filteredCourts();
 
-  countEl.textContent = courts.length;
+  // After
+  const occupiedCount  = courts.filter(c => availStatuses[c.id]?.status === 'occupied').length;
+  const availableCount = courts.length - occupiedCount;
+  if (occupiedCount > 0) {
+    countEl.innerHTML = `<b>${availableCount}</b> available · <span style="color:#f5a8a8">${occupiedCount}</span> occupied`;
+  } else {
+    countEl.innerHTML = `<b>${courts.length}</b> courts`;
+  }
   noRes.style.display = courts.length ? 'none' : 'block';
 
   list.innerHTML = courts.map(c => `
-    <div class="court-card${c.id === state.selected ? ' active' : ''}${c.geocoded ? ' geocoded' : ''}" data-id="${c.id}">
-      <div class="card-name">${c.name}</div>
+    <div class="court-card${c.id === state.selected ? ' active' : ''}${c.geocoded ? ' geocoded' : ''}${availStatuses[c.id]?.status === 'occupied' ? ' occupied' : ''}" data-id="${c.id}">
+      <div class="card-name">
+	    ${(() => {
+		  const s = availStatuses[c.id]?.status;
+		  const color = s === 'occupied' ? '#c0392b' : '#2d7a4f';
+		  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle;flex-shrink:0"></span>`;
+	    })()}${c.name}
+	  </div>
       <div class="card-meta">${c.area} · ${c.courts} court${c.courts > 1 ? 's' : ''}</div>
       <div class="card-tags">${tagsHTML(c)}</div>
     </div>
@@ -727,7 +813,11 @@ function selectCourt(id) {
   document.getElementById('detail-directions').href = mapsUrl;
 
   document.getElementById('detail').classList.add('show');
+  updateDetailAvailability(id);
 
+  document.getElementById('btn-mark-occupied').onclick  = () => markCourt(id, 'occupied');
+  document.getElementById('btn-mark-available').onclick = () => markCourt(id, 'available');
+  
   // Scroll sidebar card into view
   const card = document.querySelector(`.court-card[data-id="${id}"]`);
   if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -778,6 +868,7 @@ function wireEvents() {
   document.getElementById('detail-close').addEventListener('click', () => {
     document.getElementById('detail').classList.remove('show');
     state.selected = null;
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
     renderList();
   });
 
@@ -786,8 +877,121 @@ function wireEvents() {
   map.on('click', () => {
     document.getElementById('detail').classList.remove('show');
     state.selected = null;
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
     renderList();
   });
+}
+
+// ═══════════════════════════════════════════════
+//  AVAILABILITY
+// ═══════════════════════════════════════════════
+const availStatuses = {}; // local cache: { [courtId]: { status, updatedAt } }
+const COOLDOWN_MS = 30 * 1000; // 30s cooldown to prevent rapid toggling
+const lastMarked = {}; // { [courtId]: timestamp }
+
+async function fetchStatuses() {
+  try {
+    const resp = await fetch('/api/courts/statuses');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    Object.assign(availStatuses, data);
+    renderList();
+    // Refresh detail panel if one is open
+    if (state.selected) updateDetailAvailability(state.selected);
+  } catch (e) {
+    console.warn('Could not fetch court statuses:', e.message);
+  }
+}
+
+async function markCourt(id, status) {
+  const now = Date.now();
+  if (lastMarked[id] && now - lastMarked[id] < COOLDOWN_MS) {
+    const remaining = Math.ceil((COOLDOWN_MS - (now - lastMarked[id])) / 1000);
+    alert(`Please wait ${remaining}s before changing this court's status again.`);
+    return;
+  }
+
+  try {
+    const resp = await fetch(`/api/courts/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!resp.ok) throw new Error(`Server ${resp.status}`);
+    const data = await resp.json();
+    availStatuses[id] = { status: data.status, updatedAt: data.updatedAt };
+    lastMarked[id] = now;
+    renderList();
+    updateDetailAvailability(id);
+    refreshMarkers();
+  } catch (e) {
+    alert('Could not update status. Please try again.');
+  }
+}
+
+function availBadgeHTML(id) {
+  const s = availStatuses[id];
+  if (!s) return `<span class="avail-badge available"><div class="avail-dot"></div>Available</span>`;
+  if (s.status === 'occupied')
+    return `<span class="avail-badge occupied"><div class="avail-dot"></div>Occupied</span>`;
+  return `<span class="avail-badge available"><div class="avail-dot"></div>Available</span>`;
+}
+
+function timeAgo(isoString) {
+  const diff = Math.floor((Date.now() - new Date(isoString)) / 1000);
+  if (diff < 60)  return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+}
+
+let countdownInterval = null;
+
+function updateDetailAvailability(id) {
+  const s = availStatuses[id];
+  const badge   = document.getElementById('detail-avail-badge');
+  const updated = document.getElementById('avail-updated');
+  if (!badge) return;
+
+  // Clear any existing countdown
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+  if (!s || s.status !== 'occupied') {
+    badge.className = 'avail-badge available';
+    badge.innerHTML = `<div class="avail-dot"></div> Available`;
+    updated.textContent = s?.updatedAt
+      ? `Marked available ${timeAgo(s.updatedAt)}`
+      : 'Assumed available · Mark occupied if courts are in use.';
+    return;
+  }
+
+  // Occupied — show live countdown
+  // Reconstruct expiry from updatedAt + 2h
+  const expiresAt = new Date(s.updatedAt).getTime() + (2 * 60 * 60 * 1000);
+
+  function tick() {
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      // Expired client-side — clear local status
+      delete availStatuses[id];
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      updateDetailAvailability(id);
+      renderList();
+      refreshMarkers();
+      return;
+    }
+    const totalMins = Math.floor(remaining / 60000);
+    const hrs  = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const countdown = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+    badge.className = 'avail-badge occupied';
+    badge.innerHTML = `<div class="avail-dot"></div> Occupied`;
+    updated.textContent = `Marked occupied ${timeAgo(s.updatedAt)} · Auto-resets in ${countdown}`;
+  }
+
+  tick();
+  countdownInterval = setInterval(tick, 30000); // refresh every 30s
 }
 
 // ═══════════════════════════════════════════════
@@ -798,9 +1002,11 @@ function wireEvents() {
   placeMarkers();
   renderList();
   wireEvents();
-
-  // Start geocoding after a short delay so map renders first
   setTimeout(geocodeAllCourts, 800);
+
+  // Fetch statuses on load, then refresh every 60 seconds
+  fetchStatuses();
+  setInterval(fetchStatuses, 60 * 1000);
 })();
 </script>
 </body>

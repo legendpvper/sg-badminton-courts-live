@@ -11,8 +11,12 @@
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
+    "@upstash/redis": "^1.37.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "dotenv": "^17.3.1"
   }
 }
