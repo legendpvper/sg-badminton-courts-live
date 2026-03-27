@@ -101,6 +101,24 @@
 	  min-width: 0;
 	}
 	#filters::-webkit-scrollbar { display: none; }
+	#filter-select {
+	  display: none; /* hidden on desktop */
+	  height: 32px;
+	  background: rgba(255,255,255,.1);
+	  border: 1px solid rgba(255,255,255,.2);
+	  border-radius: var(--radius-sm);
+	  color: #fff;
+	  font-family: var(--font-ui);
+	  font-size: 12.5px;
+	  padding: 0 10px;
+	  outline: none;
+	  cursor: pointer;
+	  flex-shrink: 0;
+	}
+	#filter-select option {
+	  background: var(--navy);
+	  color: #fff;
+	}
     .pill {
       height: 30px; padding: 0 12px; border-radius: 100px;
       border: 1px solid rgba(255,255,255,.2); background: transparent;
@@ -300,7 +318,13 @@
 
 	  .logo-text { display: none; }
 
-	  #search-wrap { width: 130px; }
+	  #search-wrap {
+	    flex: 1;        /* ← takes all remaining space */
+	    width: auto;    /* ← overrides the 130px fixed width */
+	  }
+	  
+	  #filters { display: none; }       /* hide pills on mobile */
+	  #filter-select { display: flex; } /* show dropdown instead */
 
 	  #search {
 		font-size: 13px;
@@ -511,13 +535,22 @@
       <input id="search" type="text" placeholder="Search estate, block, street…" autocomplete="off">
     </div>
 
-    <div id="filters">
-      <button class="pill active" data-filter="all">All courts</button>
-      <button class="pill" data-filter="lights">Night lights</button>
-      <button class="pill" data-filter="covered">Covered</button>
-      <button class="pill" data-filter="multi">Multi-use</button>
+	<div id="filters">
+	  <button class="pill active" data-filter="all">All courts</button>
+	  <button class="pill" data-filter="lights">Night lights</button>
+	  <button class="pill" data-filter="covered">Covered</button>
+	  <button class="pill" data-filter="multi">Multi-use</button>
 	  <button class="pill" data-filter="available">Available</button>
-    </div>
+	</div>
+	
+	<!-- Mobile dropdown — hidden on desktop -->
+	<select id="filter-select">
+	  <option value="all">All courts</option>
+	  <option value="lights">Night lights</option>
+	  <option value="covered">Covered</option>
+	  <option value="multi">Multi-use</option>
+	  <option value="available">Available</option>
+	</select>
 
     <div id="count-chip"><b id="count-num">38</b> courts</div>
   </header>
@@ -1051,6 +1084,15 @@ function wireEvents() {
       renderList();
     });
   });
+  
+  document.getElementById('filter-select').addEventListener('change', e => {
+	  state.filter = e.target.value;
+	  // Keep pills in sync in case user switches to desktop
+	  document.querySelectorAll('.pill').forEach(b => {
+		b.classList.toggle('active', b.dataset.filter === state.filter);
+	  });
+	  renderList();
+	});
 
   document.getElementById('detail-close').addEventListener('click', () => {
     document.getElementById('detail').classList.remove('show');
