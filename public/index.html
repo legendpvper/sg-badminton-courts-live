@@ -430,6 +430,15 @@
 	}
 	.btn-report:hover { border-color: #f5b8b8; background: #fef0f0; color: #c0392b; }
 	
+	.btn-submit-court {
+	  font-size: 11.5px; font-weight: 500; font-family: var(--font-ui);
+	  color: var(--green); border: 1px solid #b8dfc8;
+	  background: var(--green-light); border-radius: 100px;
+	  padding: 4px 10px; text-decoration: none; white-space: nowrap;
+	  transition: all .15s;
+	}
+	.btn-submit-court:hover { background: var(--green); color: #fff; border-color: var(--green); }
+	
 	/* ── Mobile map overlay ───────────────────────── */
 	#open-map-btn {
 	  display: none; /* shown only on mobile via media query */
@@ -518,13 +527,19 @@
 
     <!-- Sidebar -->
     <aside id="sidebar">
-      <div id="sidebar-header">
-        <div class="sidebar-title">Outdoor Courts</div>
-        <div id="api-status" class="loading">
-          <div class="status-dot"></div>
-          <span id="api-status-text">Connecting to OneMap API…</span>
-        </div>
-      </div>
+		<div id="sidebar-header">
+		  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+			<div class="sidebar-title">Outdoor Courts</div>
+			<a href="https://docs.google.com/forms/d/e/1FAIpQLScIEBaq89j8i2d4mRcq3O3kGUtx6WpTeB3qsNx22EvqkfzugQ/viewform?usp=publish-editor" 
+			   target="_blank" rel="noopener" class="btn-submit-court">
+			  + Submit a court
+			</a>
+		  </div>
+		  <div id="api-status" class="loading">
+			<div class="status-dot"></div>
+			<span id="api-status-text">Connecting to OneMap API…</span>
+		  </div>
+		</div>
       <div id="court-list"></div>
       <div id="no-results">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6M11 8v6" opacity=".4"/></svg>
