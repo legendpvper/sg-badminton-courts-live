@@ -1077,10 +1077,23 @@ async function fetchStatuses() {
 
 async function markCourt(id, status) {
   const now = Date.now();
+
+  // Cooldown check (unchanged)
   if (lastMarked[id] && now - lastMarked[id] < COOLDOWN_MS) {
     const remaining = Math.ceil((COOLDOWN_MS - (now - lastMarked[id])) / 1000);
     alert(`Please wait ${remaining}s before changing this court's status again.`);
     return;
+  }
+
+  // One occupied court per device check
+  if (status === 'occupied') {
+    const currentlyMarked = localStorage.getItem('markedOccupiedCourtId');
+    if (currentlyMarked && parseInt(currentlyMarked) !== id) {
+      const markedCourt = state.courts.find(c => c.id === parseInt(currentlyMarked));
+      const name = markedCourt ? markedCourt.name : `Court #${currentlyMarked}`;
+      alert(`You've already marked "${name}" as occupied. Please mark it as available before marking another court.`);
+      return;
+    }
   }
 
   try {
@@ -1093,6 +1106,18 @@ async function markCourt(id, status) {
     const data = await resp.json();
     availStatuses[id] = { status: data.status, updatedAt: data.updatedAt };
     lastMarked[id] = now;
+
+    // Track which court this device has marked as occupied
+    if (status === 'occupied') {
+      localStorage.setItem('markedOccupiedCourtId', id);
+    } else {
+      // If they marked it available, clear the lock
+      const currentlyMarked = localStorage.getItem('markedOccupiedCourtId');
+      if (currentlyMarked && parseInt(currentlyMarked) === id) {
+        localStorage.removeItem('markedOccupiedCourtId');
+      }
+    }
+
     renderList();
     updateDetailAvailability(id);
     refreshMarkers();
@@ -1122,10 +1147,13 @@ function updateDetailAvailability(id) {
   const s = availStatuses[id];
   const badge   = document.getElementById('detail-avail-badge');
   const updated = document.getElementById('avail-updated');
+  const btnOccupied  = document.getElementById('btn-mark-occupied');
+  const btnAvailable = document.getElementById('btn-mark-available');
   if (!badge) return;
 
-  // Clear any existing countdown
   if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+  const thisDeviceMarked = parseInt(localStorage.getItem('markedOccupiedCourtId')) === id;
 
   if (!s || s.status !== 'occupied') {
     badge.className = 'avail-badge available';
@@ -1133,20 +1161,23 @@ function updateDetailAvailability(id) {
     updated.textContent = s?.updatedAt
       ? `Marked available ${timeAgo(s.updatedAt)}`
       : 'Assumed available · Mark occupied if courts are in use.';
+
+    // Only show Mark Occupied — not Mark Available since it's already available
+    btnOccupied.style.display  = 'flex';
+    btnAvailable.style.display = 'none';
     return;
   }
 
-  // Occupied — show live countdown
-  // Reconstruct expiry from updatedAt + 2h
+  // Court is occupied — show countdown
   const expiresAt = new Date(s.updatedAt).getTime() + (2 * 60 * 60 * 1000);
 
   function tick() {
     const remaining = expiresAt - Date.now();
     if (remaining <= 0) {
-      // Expired client-side — clear local status
       delete availStatuses[id];
       clearInterval(countdownInterval);
       countdownInterval = null;
+      localStorage.removeItem('markedOccupiedCourtId');
       updateDetailAvailability(id);
       renderList();
       refreshMarkers();
@@ -1159,11 +1190,22 @@ function updateDetailAvailability(id) {
 
     badge.className = 'avail-badge occupied';
     badge.innerHTML = `<div class="avail-dot"></div> Occupied`;
-    updated.textContent = `Marked occupied ${timeAgo(s.updatedAt)} · Auto-resets in ${countdown}`;
+
+    if (thisDeviceMarked) {
+      // This device marked it — show Mark Available so they can undo it
+      btnOccupied.style.display  = 'none';
+      btnAvailable.style.display = 'flex';
+      updated.textContent = `You marked this occupied ${timeAgo(s.updatedAt)} · Auto-resets in ${countdown}`;
+    } else {
+      // Someone else marked it — hide both buttons
+      btnOccupied.style.display  = 'none';
+      btnAvailable.style.display = 'none';
+      updated.textContent = `Marked occupied ${timeAgo(s.updatedAt)} · Auto-resets in ${countdown}`;
+    }
   }
 
   tick();
-  countdownInterval = setInterval(tick, 30000); // refresh every 30s
+  countdownInterval = setInterval(tick, 30000);
 }
 
 // ═══════════════════════════════════════════════
