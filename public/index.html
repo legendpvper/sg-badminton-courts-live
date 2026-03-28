@@ -1118,14 +1118,28 @@ const availStatuses = {}; // local cache: { [courtId]: { status, updatedAt } }
 const COOLDOWN_MS = 30 * 1000; // 30s cooldown to prevent rapid toggling
 const lastMarked = {}; // { [courtId]: timestamp }
 
+function syncLocalStorageLock(serverStatuses) {
+  const markedId = localStorage.getItem('markedOccupiedCourtId');
+  if (!markedId) return;
+
+  const serverStatus = serverStatuses[markedId];
+  // If the server no longer has this court as occupied, the 2h expiry has passed
+  // Clear the local lock so the user can mark other courts again
+  if (!serverStatus || serverStatus.status !== 'occupied') {
+    localStorage.removeItem('markedOccupiedCourtId');
+  }
+}
+
 async function fetchStatuses() {
   try {
     const resp = await fetch('/api/courts/statuses');
     if (!resp.ok) return;
     const data = await resp.json();
     Object.assign(availStatuses, data);
+
+    syncLocalStorageLock(data); // ← add this line
+
     renderList();
-    // Refresh detail panel if one is open
     if (state.selected) updateDetailAvailability(state.selected);
   } catch (e) {
     console.warn('Could not fetch court statuses:', e.message);
