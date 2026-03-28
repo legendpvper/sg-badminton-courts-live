@@ -511,6 +511,18 @@
 	
 	#map-fab:hover { background: var(--navy-mid); }
 	
+	.popularity-row {
+	  display: flex; align-items: center; gap: 8px;
+	  margin-top: 8px; padding: 8px 10px;
+	  background: var(--bg); border-radius: var(--radius-sm);
+	  font-size: 12.5px; color: var(--slate);
+	}
+	.popularity-label {
+	  font-weight: 600; color: var(--navy);
+	}
+	.popularity-label.hot   { color: #c0392b; }
+	.popularity-label.warm  { color: #e67e22; }
+	.popularity-label.quiet { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -621,6 +633,7 @@
           </div>
           <div class="detail-tags" id="detail-tags"></div>
           <div class="detail-coords" id="detail-coords"></div>
+		  <div id="detail-popularity"></div>  <!-- ← add this -->
           <div class="detail-note" id="detail-note"></div>
           <a class="btn-directions" id="detail-directions" href="#" target="_blank" rel="noopener">
 			  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -1041,6 +1054,8 @@ function selectCourt(id) {
   document.getElementById('btn-mark-occupied').onclick  = () => markCourt(id, 'occupied');
   document.getElementById('btn-mark-available').onclick = () => markCourt(id, 'available');
   
+  document.getElementById('detail-popularity').innerHTML = popularityHTML(id);
+
   // Scroll sidebar card into view
   const card = document.querySelector(`.court-card[data-id="${id}"]`);
   if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -1124,6 +1139,45 @@ function wireEvents() {
 const availStatuses = {}; // local cache: { [courtId]: { status, updatedAt } }
 const COOLDOWN_MS = 30 * 1000; // 30s cooldown to prevent rapid toggling
 const lastMarked = {}; // { [courtId]: timestamp }
+const popularityData = {}; // { [courtId]: count }
+
+async function fetchPopularity() {
+  try {
+    const resp = await fetch('/api/courts/popularity');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    Object.assign(popularityData, data);
+    if (state.selected) updateDetailAvailability(state.selected);
+  } catch (e) {
+    console.warn('Could not fetch popularity:', e.message);
+  }
+}
+
+function popularityHTML(id) {
+  const count = popularityData[id] || 0;
+  if (count === 0) {
+    return `<div class="popularity-row">
+      <span>🏸</span>
+      <span><span class="popularity-label quiet">Quiet</span> · No bookings recorded this week</span>
+    </div>`;
+  }
+  if (count >= 20) {
+    return `<div class="popularity-row">
+      <span>🔥</span>
+      <span><span class="popularity-label hot">Very popular!</span> · ${count} bookings this week</span>
+    </div>`;
+  }
+  if (count >= 5) {
+    return `<div class="popularity-row">
+      <span>⚡</span>
+      <span><span class="popularity-label warm">Popular</span> · ${count} bookings this week</span>
+    </div>`;
+  }
+  return `<div class="popularity-row">
+    <span>🏸</span>
+    <span><span class="popularity-label">Active</span> · ${count} booking${count > 1 ? 's' : ''} this week</span>
+  </div>`;
+}
 
 function syncLocalStorageLock(serverStatuses) {
   const markedId = localStorage.getItem('markedOccupiedCourtId');
@@ -1299,6 +1353,9 @@ function updateDetailAvailability(id) {
   // Fetch statuses on load, then refresh every 60 seconds
   fetchStatuses();
   setInterval(fetchStatuses, 60 * 1000);
+  
+  fetchPopularity();
+  setInterval(fetchPopularity, 5 * 60 * 1000);
 })();
 
 function openMap() {

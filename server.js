@@ -72,9 +72,11 @@ app.post("/api/courts/:id/status", async (req, res) => {
 
   try {
     const key = `court:${id}:status`;
-    if (status === "occupied") {
-      // Auto-expire occupied status after 2 hours — Redis does this natively
-      await redis.set(key, entry, { ex: STATUS_TTL_SECONDS });
+	if (status === "occupied") {
+	  await redis.set(key, entry, { ex: STATUS_TTL_SECONDS });
+	  // Record booking timestamp for popularity tracking (kept for 8 days)
+	  await redis.lpush(`bookings:${id}`, Date.now());
+	  await redis.expire(`bookings:${id}`, 8 * 24 * 60 * 60); // 8 days TTL, slightly longer than window
     } else {
       // Available — store without expiry (available is the default state)
       await redis.set(key, entry);
@@ -82,6 +84,40 @@ app.post("/api/courts/:id/status", async (req, res) => {
     return res.json({ id, ...entry });
   } catch (err) {
     console.error("Redis SET status error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+//  Court Popularity — rolling 7-day booking count
+//  Incremented every time a court is marked occupied.
+//  Redis sorted set: key = "popularity", member = courtId, score = count
+//  Each booking also stored as a timestamped entry to allow 7-day rolling window.
+// ─────────────────────────────────────────────
+
+// GET /api/courts/popularity — returns booking counts for all courts in last 7 days
+app.get("/api/courts/popularity", async (req, res) => {
+  try {
+    const now = Date.now();
+    const cutoff = now - (7 * 24 * 60 * 60 * 1000); // 7 days ago
+
+    // Get all court booking keys
+    const keys = await redis.keys("bookings:*");
+    if (!keys || keys.length === 0) return res.json({});
+
+    const result = {};
+    for (const key of keys) {
+      const courtId = key.split(":")[1];
+      // Each court has a list of timestamps
+      const timestamps = await redis.lrange(key, 0, -1);
+      // Count only those within the last 7 days
+      const recentCount = timestamps.filter(ts => parseInt(ts) > cutoff).length;
+      if (recentCount > 0) result[courtId] = recentCount;
+    }
+
+    return res.json(result);
+  } catch (err) {
+    console.error("Redis popularity error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });
