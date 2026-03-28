@@ -938,19 +938,26 @@ async function geocodeAllCourts() {
 // ═══════════════════════════════════════════════
 function filteredCourts() {
   const q = state.search.toLowerCase();
-  return state.courts.filter(c => {
+  const filtered = state.courts.filter(c => {
     const matchFilter =
-	 state.filter === 'all'    ||
-	 (state.filter === 'lights'    && c.lights)  ||
-	 (state.filter === 'covered'   && c.covered) ||
-	 (state.filter === 'multi'     && c.multi)   ||
-	 (state.filter === 'available' && availStatuses[c.id]?.status !== 'occupied');
+      state.filter === 'all'    ||
+      (state.filter === 'lights'    && c.lights)  ||
+      (state.filter === 'covered'   && c.covered) ||
+      (state.filter === 'multi'     && c.multi)   ||
+      (state.filter === 'available' && availStatuses[c.id]?.status !== 'occupied');
     const matchSearch =
       !q ||
       c.name.toLowerCase().includes(q)  ||
       c.area.toLowerCase().includes(q)  ||
       c.addr.toLowerCase().includes(q);
     return matchFilter && matchSearch;
+  });
+
+  // Sort occupied courts to the bottom
+  return filtered.sort((a, b) => {
+    const aOccupied = availStatuses[a.id]?.status === 'occupied' ? 1 : 0;
+    const bOccupied = availStatuses[b.id]?.status === 'occupied' ? 1 : 0;
+    return aOccupied - bOccupied;
   });
 }
 
