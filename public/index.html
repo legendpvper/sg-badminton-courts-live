@@ -40,6 +40,104 @@
       --font-display: 'Space Grotesk', sans-serif;
     }
 
+	/* ── Dark mode variables ──────────────────────── */
+	body.dark {
+	  --green:        #3d9e68;
+	  --green-light:  #1a2e22;
+	  --green-mid:    #4caf7d;
+	  --accent:       #ff6b35;
+	  --accent-light: #2e1a0e;
+	  --navy:         #0a1520;
+	  --navy-mid:     #111e2b;
+	  --slate:        #8fa3b0;
+	  --muted:        #556070;
+	  --border:       #1e2e3a;
+	  --bg:           #0d1821;
+	  --white:        #111e2b;
+	  --shadow-sm:    0 1px 3px rgba(0,0,0,.3);
+	  --shadow-md:    0 4px 16px rgba(0,0,0,.4);
+	  --shadow-lg:    0 8px 32px rgba(0,0,0,.5);
+	}
+
+	/* Dark mode specific overrides */
+	body.dark #header {
+	  background: #060e16;
+	  border-bottom-color: rgba(255,255,255,.05);
+	}
+	body.dark .court-card:hover    { background: #162030; }
+	body.dark .court-card.active   { background: var(--green-light); }
+	body.dark #sidebar             { background: #111e2b; }
+	body.dark #sidebar-header      { border-bottom-color: var(--border); }
+	body.dark .detail-header       { background: #060e16; }
+	body.dark #detail              { background: #111e2b; border-color: var(--border); }
+	body.dark .detail-coords       { background: #0d1821; }
+	body.dark .weather-banner      { background: #111e2b; border-bottom-color: var(--border); }
+	body.dark .weather-banner.rain { background: #0e1828; border-bottom-color: #1e3050; }
+	body.dark .weather-banner.clear{ background: #1a1800; border-bottom-color: #2e2a00; }
+	body.dark .detail-weather         { background: #0d1821; border-color: var(--border); }
+	body.dark .detail-weather.rain    { background: #0e1828; border-color: #1e3050; }
+	body.dark .detail-weather.clear   { background: #1a1800; border-color: #2e2a00; }
+	body.dark .tag-free     { background: #1a2e22; color: #4caf7d; }
+	body.dark .tag-lights   { background: #2a2000; color: #c8a820; }
+	body.dark .tag-covered  { background: #001428; color: #4d9fd6; }
+	body.dark .tag-multi    { background: #1a0e30; color: #9b7de0; }
+	body.dark .tag-verified { background: #0e2a12; color: #4caf7d; border-color: #1e4a22; }
+	body.dark .avail-badge.available { background: #1a2e22; color: #4caf7d; }
+	body.dark .avail-badge.occupied  { background: #2e0e0e; color: #e05050; }
+	body.dark .popularity-row        { background: #0d1821; }
+	body.dark .btn-report { background: #111e2b; border-color: var(--border); color: var(--slate); }
+	body.dark .btn-submit-court { background: #1a2e22; color: #4caf7d; border-color: #1e4a22; }
+	body.dark .btn-sort-nearest { background: #111e2b; border-color: var(--border); color: var(--slate); }
+	body.dark .btn-sort-nearest:hover { border-color: var(--green); color: var(--green); }
+	body.dark #api-status { background: #1a2e22; border-color: #1e4a22; }
+	body.dark #api-status.loading { background: #2a2000; border-color: #3a3000; color: #c8a820; }
+	body.dark #api-status.error   { background: #2e0e0e; border-color: #4e1e1e; color: #e05050; }
+	body.dark .leaflet-control-zoom a { background: #111e2b !important; color: #8fa3b0 !important; border-color: var(--border) !important; }
+	body.dark .leaflet-control-zoom   { border-color: var(--border) !important; }
+	body.dark .leaflet-popup-content-wrapper { background: #111e2b; border-color: var(--border); color: #e8e8e8; }
+	body.dark #map { filter: brightness(0.85) saturate(0.9); }
+	body.dark .card-name        { color: #e8e8e8; }
+	body.dark .card-meta        { color: #556070; }
+	body.dark .court-card       { border-bottom-color: var(--border); }
+	body.dark .sidebar-title    { color: #8fa3b0; }
+	body.dark #no-results       { color: #556070; }
+	body.dark .detail-name      { color: #fff; }
+	body.dark .detail-area      { color: rgba(255,255,255,.55); }
+	body.dark .detail-row       { color: #8fa3b0; }
+	body.dark .detail-note      { color: #556070; }
+	body.dark .sort-status      { color: #556070; }
+	body.dark .weather-headline { color: #e8e8e8; }
+	body.dark .weather-detail   { color: #556070; }
+	body.dark .popularity-label { color: #e8e8e8; }
+	body.dark .card-distance    { color: #4caf7d; }
+	body.dark .card-distance.far { color: #556070; }
+	body.dark .weather-icon { color: #e8e8e8; }
+	body.dark .weather-detail { color: #556070; }
+	body.dark .sort-status { color: #556070; }
+	body.dark .detail-addr       { color: #e8e8e8; }
+	body.dark #detail-courts     { color: #8fa3b0; }
+	body.dark .detail-coords     { color: #8fa3b0; }
+	body.dark .detail-coords span { color: #4caf7d; }
+	body.dark .detail-weather-forecast { color: #e8e8e8; }
+	body.dark .detail-weather-area     { color: #556070; }
+	body.dark .detail-distance         { color: #8fa3b0; }
+	body.dark .detail-distance span    { color: #4caf7d; }
+	body.dark .avail-updated           { color: #556070; }
+	body.dark #detail-note             { color: #556070; }
+	body.dark .detail-body             { color: #8fa3b0; }
+	body.dark .popularity-row          { color: #8fa3b0; }
+	body.dark .court-availability-title { color: #8fa3b0; }
+	
+	/* Dark mode toggle button */
+	#dark-mode-btn {
+	  width: 34px; height: 34px; border-radius: 50%;
+	  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+	  color: rgba(255,255,255,.8); cursor: pointer; flex-shrink: 0;
+	  display: flex; align-items: center; justify-content: center;
+	  transition: all .15s;
+	}
+	#dark-mode-btn:hover { background: rgba(255,255,255,.2); }
+
     html, body { height: 100%; overflow: hidden; font-family: var(--font-ui); background: var(--bg); color: var(--navy); }
 
     /* ── Layout shell ─────────────────────────────── */
@@ -646,6 +744,10 @@
 	</select>
 
     <div id="count-chip"><b id="count-num">38</b> courts</div>
+	<button id="dark-mode-btn" onclick="toggleDarkMode()" title="Toggle dark mode">
+	  <svg id="dark-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+	  <svg id="light-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+	</button>
   </header>
 
   <!-- ── Body ────────────────────────────────────── -->
@@ -1766,9 +1868,29 @@ function toggleNearestSort() {
 }
 
 // ═══════════════════════════════════════════════
+//  DARK MODE
+// ═══════════════════════════════════════════════
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', isDark ? '1' : '0');
+  document.getElementById('dark-icon').style.display  = isDark ? 'none'  : 'block';
+  document.getElementById('light-icon').style.display = isDark ? 'block' : 'none';
+}
+
+function initDarkMode() {
+  const saved = localStorage.getItem('darkMode');
+  if (saved === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('dark-icon').style.display  = 'none';
+    document.getElementById('light-icon').style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════
 //  BOOTSTRAP
 // ═══════════════════════════════════════════════
 (async function init() {
+  initDarkMode(); // ← first line
   initMap();
   placeMarkers();
   renderList();
