@@ -1349,6 +1349,43 @@ async function fetchStatuses() {
 async function markCourt(id, status) {
   const now = Date.now();
 
+  // Location proximity check — only allow marking occupied if within 100m
+  if (status === 'occupied') {
+    const court = state.courts.find(c => c.id === id);
+
+    if (state.userLat === null || state.userLng === null) {
+      // No location yet — request it first
+      const confirmed = await new Promise(resolve => {
+        const result = confirm('We need your location to verify you\'re at the court. Allow location access?');
+        resolve(result);
+      });
+      if (!confirmed) return;
+
+      try {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              state.userLat = pos.coords.latitude;
+              state.userLng = pos.coords.longitude;
+              resolve();
+            },
+            () => reject(new Error('Location denied'))
+          );
+        });
+      } catch (e) {
+        alert('Could not get your location. Please enable location permissions and try again.');
+        return;
+      }
+    }
+
+    // Now check distance
+    const dist = haversineDistance(state.userLat, state.userLng, court.lat, court.lng);
+    if (dist > 100) {
+      alert(`You need to be within 100m of the court to mark it as occupied.\n\nYou are currently ${formatDistance(dist)} away from ${court.name}.`);
+      return;
+    }
+  }
+
   // Cooldown check (unchanged)
   if (lastMarked[id] && now - lastMarked[id] < COOLDOWN_MS) {
     const remaining = Math.ceil((COOLDOWN_MS - (now - lastMarked[id])) / 1000);
@@ -1356,7 +1393,7 @@ async function markCourt(id, status) {
     return;
   }
 
-  // One occupied court per device check
+  // One occupied court per device check (unchanged)
   if (status === 'occupied') {
     const currentlyMarked = localStorage.getItem('markedOccupiedCourtId');
     if (currentlyMarked && parseInt(currentlyMarked) !== id) {
@@ -1378,11 +1415,9 @@ async function markCourt(id, status) {
     availStatuses[id] = { status: data.status, updatedAt: data.updatedAt };
     lastMarked[id] = now;
 
-    // Track which court this device has marked as occupied
     if (status === 'occupied') {
       localStorage.setItem('markedOccupiedCourtId', id);
     } else {
-      // If they marked it available, clear the lock
       const currentlyMarked = localStorage.getItem('markedOccupiedCourtId');
       if (currentlyMarked && parseInt(currentlyMarked) === id) {
         localStorage.removeItem('markedOccupiedCourtId');
