@@ -123,6 +123,26 @@ app.get("/api/courts/popularity", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
+//  NEA 2-Hour Weather Nowcast Proxy
+//  GET /api/weather
+//  Proxies data.gov.sg to avoid CORS issues
+// ─────────────────────────────────────────────
+app.get("/api/weather", async (req, res) => {
+  try {
+    const url = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast";
+    const response = await fetch(url, {
+      headers: { "User-Agent": "SG-Badminton-Courts-App/1.0" }
+    });
+    if (!response.ok) throw new Error(`NEA API responded with ${response.status}`);
+    const data = await response.json();
+    return res.json(data);
+  } catch (err) {
+    console.error("Weather fetch error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
 //  OneMap Geocode Proxy (unchanged)
 // ─────────────────────────────────────────────
 app.get("/api/geocode", async (req, res) => {

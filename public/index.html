@@ -523,6 +523,54 @@
 	.popularity-label.hot   { color: #c0392b; }
 	.popularity-label.warm  { color: #e67e22; }
 	.popularity-label.quiet { color: var(--muted); }
+	
+	/* ── Weather banner ───────────────────────────── */
+	.weather-banner {
+	  display: flex; align-items: center; gap: 10px;
+	  padding: 10px 14px; border-bottom: 1px solid var(--border);
+	  background: var(--white); transition: background .3s;
+	}
+	.weather-banner.hidden { display: none; }
+	.weather-banner.rain   { background: #eef4ff; border-bottom-color: #c5d9f5; }
+	.weather-banner.clear  { background: #fffbea; border-bottom-color: #f0e080; }
+	.weather-banner.cloudy { background: var(--bg); }
+
+	.weather-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+
+	.weather-info { flex: 1; min-width: 0; }
+	.weather-headline {
+	  font-size: 13px; font-weight: 600; color: var(--navy);
+	  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	}
+	.weather-detail { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+	.weather-badge {
+	  font-size: 11px; font-weight: 500; padding: 3px 9px;
+	  border-radius: 100px; white-space: nowrap; flex-shrink: 0;
+	}
+	.weather-badge.good    { background: var(--green-light); color: var(--green); }
+	.weather-badge.caution { background: #fff8e6; color: #7a5a00; }
+	.weather-badge.bad     { background: #fef0f0; color: #c0392b; }
+	
+	.detail-weather {
+	  display: flex; align-items: center; gap: 10px;
+	  padding: 10px 12px; border-radius: var(--radius-sm);
+	  margin-top: 8px; font-size: 13px;
+	  border: 1px solid var(--border); background: var(--bg);
+	  transition: background .3s;
+	}
+	.detail-weather.hidden { display: none; }
+	.detail-weather.rain   { background: #eef4ff; border-color: #c5d9f5; }
+	.detail-weather.clear  { background: #fffbea; border-color: #f0e080; }
+	.detail-weather.cloudy { background: var(--bg); }
+	.detail-weather-icon   { font-size: 20px; flex-shrink: 0; line-height: 1; }
+	.detail-weather-info   { flex: 1; min-width: 0; }
+	.detail-weather-forecast {
+	  font-weight: 600; color: var(--navy); font-size: 13px;
+	}
+	.detail-weather-area {
+	  font-size: 11px; color: var(--muted); margin-top: 1px;
+	}
   </style>
 </head>
 <body>
@@ -585,6 +633,14 @@
 			<span id="api-status-text">Connecting to OneMap API…</span>
 		  </div>
 		</div>
+		<div id="weather-banner" class="weather-banner hidden">
+		  <div id="weather-icon" class="weather-icon">🌤</div>
+		  <div class="weather-info">
+			<div id="weather-headline" class="weather-headline">Loading weather…</div>
+			<div id="weather-detail" class="weather-detail">Singapore · 2-hour nowcast</div>
+		  </div>
+		  <div id="weather-badge" class="weather-badge"></div>
+		</div>
       <div id="court-list"></div>
       <div id="no-results">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6M11 8v6" opacity=".4"/></svg>
@@ -634,6 +690,7 @@
           <div class="detail-tags" id="detail-tags"></div>
           <div class="detail-coords" id="detail-coords"></div>
 		  <div id="detail-popularity"></div>  <!-- ← add this -->
+		  <div id="detail-weather" class="detail-weather hidden"></div>
           <div class="detail-note" id="detail-note"></div>
           <a class="btn-directions" id="detail-directions" href="#" target="_blank" rel="noopener">
 			  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -1048,6 +1105,14 @@ function selectCourt(id) {
   const baseForm = 'https://docs.google.com/forms/d/e/1FAIpQLSd4qGpSj6I6XKwKbaGWWcy2VDqRi4-Lvb4HK8Syt_FDpqSgTw/viewform?usp=pp_url';
   document.getElementById('detail-report').href =`${baseForm}&entry.281594596=${encodeURIComponent(c.name)}`;
 
+  // Update weather banner to show forecast for this court's area
+  if (Object.keys(areaForecasts).length > 0) {
+    showWeatherForArea(c.area, null);
+  }
+  
+  // Update detail panel weather (visible on mobile)
+  updateDetailWeather(c.area);
+
   document.getElementById('detail').classList.add('show');
   updateDetailAvailability(id);
 
@@ -1116,12 +1181,14 @@ function wireEvents() {
 	  renderList();
 	});
 
-  document.getElementById('detail-close').addEventListener('click', () => {
-    document.getElementById('detail').classList.remove('show');
-    state.selected = null;
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-    renderList();
-  });
+	document.getElementById('detail-close').addEventListener('click', () => {
+	  document.getElementById('detail').classList.remove('show');
+	  document.getElementById('detail-weather').className = 'detail-weather hidden';
+	  state.selected = null;
+	  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+	  renderList();
+	  fetchWeather();
+	});
 
   document.getElementById('locate-btn').addEventListener('click', locateUser);
 
@@ -1341,6 +1408,170 @@ function updateDetailAvailability(id) {
 }
 
 // ═══════════════════════════════════════════════
+//  WEATHER
+// ═══════════════════════════════════════════════
+const RAIN_FORECASTS = ['Moderate Rain', 'Heavy Rain', 'Heavy Thundery Showers',
+  'Thundery Showers', 'Light Rain', 'Light Showers', 'Showers',
+  'Heavy Showers', 'Passing Showers', 'Heavy Thundery Showers with Gusty Winds'];
+const CLOUDY_FORECASTS = ['Cloudy', 'Partly Cloudy (Day)', 'Partly Cloudy (Night)',
+  'Overcast', 'Hazy', 'Slightly Hazy', 'Windy', 'Mist', 'Fog'];
+
+function weatherIcon(forecast) {
+  if (RAIN_FORECASTS.some(r => forecast.includes(r) || r.includes(forecast))) return '🌧';
+  if (forecast.includes('Thunder')) return '⛈';
+  if (CLOUDY_FORECASTS.some(c => forecast.includes(c) || c.includes(forecast))) return '🌥';
+  if (forecast.includes('Fair') || forecast.includes('Sunny')) return '☀️';
+  return '🌤';
+}
+
+function weatherCategory(forecast) {
+  if (RAIN_FORECASTS.some(r => forecast.includes(r) || r.includes(forecast))) return 'rain';
+  if (CLOUDY_FORECASTS.some(c => forecast.includes(c) || c.includes(forecast))) return 'cloudy';
+  return 'clear';
+}
+
+function playabilityBadge(category) {
+  if (category === 'rain') return { cls: 'bad',     text: 'Not ideal' };
+  if (category === 'cloudy') return { cls: 'caution', text: 'Playable' };
+  return { cls: 'good', text: 'Great conditions' };
+}
+
+// Store the full area forecasts for later lookup
+let areaForecasts = {};
+
+async function fetchWeather() {
+  try {
+    const resp = await fetch('/api/weather');
+    if (!resp.ok) throw new Error(`Weather API ${resp.status}`);
+    const data = await resp.json();
+
+    const items = data?.items?.[0]?.forecasts;
+    if (!items || items.length === 0) return;
+
+    // Store all area forecasts for per-court lookup
+    items.forEach(f => {
+      areaForecasts[f.area.toLowerCase()] = f.forecast;
+    });
+
+    const updatedAt = data?.items?.[0]?.update_timestamp;
+    const timeStr   = updatedAt
+      ? new Date(updatedAt).toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' })
+      : 'now';
+
+    // Show Singapore-wide summary when no court is selected
+    if (!state.selected) {
+      showWeatherSummary(items, timeStr);
+    } else {
+      const court = state.courts.find(c => c.id === state.selected);
+      if (court) showWeatherForArea(court.area, timeStr);
+    }
+
+  } catch (e) {
+    console.warn('Could not fetch weather:', e.message);
+  }
+}
+
+function showWeatherSummary(items, timeStr) {
+  const counts = {};
+  items.forEach(f => { counts[f.forecast] = (counts[f.forecast] || 0) + 1; });
+  const dominant  = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  const total     = items.length;
+  const rainCount = items.filter(f =>
+    RAIN_FORECASTS.some(r => f.forecast.includes(r) || r.includes(f.forecast))
+  ).length;
+
+  const category  = weatherCategory(dominant);
+  const badgeInfo = playabilityBadge(category);
+
+  const banner   = document.getElementById('weather-banner');
+  const iconEl   = document.getElementById('weather-icon');
+  const headline = document.getElementById('weather-headline');
+  const detail   = document.getElementById('weather-detail');
+  const badge    = document.getElementById('weather-badge');
+
+  iconEl.textContent = weatherIcon(dominant);
+  headline.textContent = rainCount > total * 0.5
+    ? 'Rain across most of Singapore'
+    : rainCount > 0
+      ? `${dominant} in some areas`
+      : dominant;
+  detail.textContent = `All areas · Updated ${timeStr}`;
+  badge.textContent  = badgeInfo.text;
+  badge.className    = `weather-badge ${badgeInfo.cls}`;
+  banner.className   = `weather-banner ${category}`;
+}
+
+function showWeatherForArea(area, timeStr) {
+  // NEA area names don't always match our court area names exactly
+  // so we do a fuzzy match — check if the NEA area name contains
+  // or is contained by the court area name
+  const areaLower = area.toLowerCase();
+  const matchedKey = Object.keys(areaForecasts).find(k =>
+    k.includes(areaLower) || areaLower.includes(k)
+  );
+
+  const forecast  = matchedKey ? areaForecasts[matchedKey] : null;
+  const category  = forecast ? weatherCategory(forecast) : 'cloudy';
+  const badgeInfo = playabilityBadge(category);
+
+  const banner   = document.getElementById('weather-banner');
+  const iconEl   = document.getElementById('weather-icon');
+  const headline = document.getElementById('weather-headline');
+  const detail   = document.getElementById('weather-detail');
+  const badge    = document.getElementById('weather-badge');
+
+  // Use a fallback time if we don't have it (e.g. called from selectCourt before fetchWeather completes)
+  const time = timeStr || 'now';
+
+  if (!forecast) {
+    // No match found — fall back to showing nearby areas
+    iconEl.textContent   = '🌤';
+    headline.textContent = 'Weather unavailable for this area';
+    detail.textContent   = `${area} · Check NEA for details`;
+    badge.textContent    = '—';
+    badge.className      = 'weather-badge caution';
+    banner.className     = 'weather-banner cloudy';
+    return;
+  }
+
+  iconEl.textContent   = weatherIcon(forecast);
+  headline.textContent = forecast;
+  detail.textContent   = `${area} · Updated ${time}`;
+  badge.textContent    = badgeInfo.text;
+  badge.className      = `weather-badge ${badgeInfo.cls}`;
+  banner.className     = `weather-banner ${category}`;
+}
+
+function updateDetailWeather(area) {
+  const el = document.getElementById('detail-weather');
+  if (!el) return;
+
+  const areaLower  = area.toLowerCase();
+  const matchedKey = Object.keys(areaForecasts).find(k =>
+    k.includes(areaLower) || areaLower.includes(k)
+  );
+  const forecast = matchedKey ? areaForecasts[matchedKey] : null;
+
+  if (!forecast) {
+    el.className = 'detail-weather hidden';
+    return;
+  }
+
+  const category = weatherCategory(forecast);
+  const badge    = playabilityBadge(category);
+
+  el.className = `detail-weather ${category}`;
+  el.innerHTML = `
+    <div class="detail-weather-icon">${weatherIcon(forecast)}</div>
+    <div class="detail-weather-info">
+      <div class="detail-weather-forecast">${forecast}</div>
+      <div class="detail-weather-area">${area} · 2-hour nowcast</div>
+    </div>
+    <div class="weather-badge ${badge.cls}">${badge.text}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
 //  BOOTSTRAP
 // ═══════════════════════════════════════════════
 (async function init() {
@@ -1356,6 +1587,9 @@ function updateDetailAvailability(id) {
   
   fetchPopularity();
   setInterval(fetchPopularity, 5 * 60 * 1000);
+  
+  fetchWeather();
+  setInterval(fetchWeather, 10 * 60 * 1000);
 })();
 
 function openMap() {
