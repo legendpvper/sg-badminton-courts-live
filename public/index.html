@@ -571,6 +571,39 @@
 	.detail-weather-area {
 	  font-size: 11px; color: var(--muted); margin-top: 1px;
 	}
+	
+	/* ── Nearest sort ─────────────────────────────── */
+	.btn-sort-nearest {
+	  display: flex; align-items: center; gap: 6px;
+	  font-size: 12px; font-weight: 500; font-family: var(--font-ui);
+	  color: var(--slate); border: 1px solid var(--border);
+	  background: var(--white); border-radius: 100px;
+	  padding: 5px 11px; cursor: pointer; transition: all .15s;
+	}
+	.btn-sort-nearest:hover { border-color: var(--green); color: var(--green); }
+	.btn-sort-nearest.active {
+	  background: var(--green); color: #fff;
+	  border-color: var(--green);
+	}
+	.btn-sort-nearest.active svg { stroke: #fff; }
+
+	.sort-status {
+	  font-size: 11px; color: var(--muted); font-style: italic;
+	}
+
+	.card-distance {
+	  font-size: 11.5px; color: var(--green); font-weight: 500;
+	  margin-top: 4px; display: flex; align-items: center; gap: 4px;
+	}
+	.card-distance.far { color: var(--muted); }
+
+	.detail-distance {
+	  display: flex; align-items: center; gap: 6px;
+	  font-size: 13px; color: var(--slate);
+	  margin-bottom: 8px;
+	}
+	.detail-distance svg { color: var(--muted); flex-shrink: 0; }
+	.detail-distance span { font-weight: 500; color: var(--green); }
   </style>
 </head>
 <body>
@@ -628,6 +661,13 @@
 			  + Submit a court
 			</a>
 		  </div>
+		  <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
+			  <button id="sort-nearest-btn" onclick="toggleNearestSort()" class="btn-sort-nearest">
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+				Nearest to me
+			  </button>
+			  <div id="sort-status" class="sort-status" style="display:none">Locating…</div>
+			</div>
 		  <div id="api-status" class="loading">
 			<div class="status-dot"></div>
 			<span id="api-status-text">Connecting to OneMap API…</span>
@@ -687,6 +727,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
             <span id="detail-courts">2 courts available</span>
           </div>
+		  <div class="detail-distance" id="detail-distance" style="display:none">
+		    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+		    <span></span>
+		  </div>
           <div class="detail-tags" id="detail-tags"></div>
           <div class="detail-coords" id="detail-coords"></div>
 		  <div id="detail-popularity"></div>  <!-- ← add this -->
@@ -1023,12 +1067,19 @@ function filteredCourts() {
     return matchFilter && matchSearch;
   });
 
-  // Sort occupied courts to the bottom
-  return filtered.sort((a, b) => {
-    const aOccupied = availStatuses[a.id]?.status === 'occupied' ? 1 : 0;
-    const bOccupied = availStatuses[b.id]?.status === 'occupied' ? 1 : 0;
-    return aOccupied - bOccupied;
-  });
+  // Sort: nearest first (if active), then occupied to bottom
+	return filtered.sort((a, b) => {
+	  const aOccupied = availStatuses[a.id]?.status === 'occupied' ? 1 : 0;
+	  const bOccupied = availStatuses[b.id]?.status === 'occupied' ? 1 : 0;
+	  if (aOccupied !== bOccupied) return aOccupied - bOccupied;
+
+	  if (sortByNearest && state.userLat !== null) {
+		const distA = getDistance(a);
+		const distB = getDistance(b);
+		if (distA !== null && distB !== null) return distA - distB;
+	  }
+	  return 0;
+	});
 }
 
 function tagsHTML(c) {
@@ -1066,6 +1117,15 @@ function renderList() {
 	    })()}${c.name}
 	  </div>
       <div class="card-meta">${c.area} · ${c.courts} court${c.courts > 1 ? 's' : ''}</div>
+		${(() => {
+		  const dist = getDistance(c);
+		  if (dist === null) return '';
+		  const isFar = dist > 5000;
+		  return `<div class="card-distance${isFar ? ' far' : ''}">
+			<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+			${formatDistance(dist)}
+		  </div>`;
+		})()}
       <div class="card-tags">${tagsHTML(c)}</div>
     </div>
   `).join('');
@@ -1093,6 +1153,18 @@ function selectCourt(id) {
   document.getElementById('detail-area').textContent   = c.area;
   document.getElementById('detail-addr').textContent   = c.geocodedAddr || c.addr;
   document.getElementById('detail-courts').textContent = `${c.courts} court${c.courts > 1 ? 's' : ''} available · Free access`;
+  const distEl   = document.getElementById('detail-distance');
+  const courtDist = getDistance(c);
+  if (distEl) {
+    if (courtDist !== null) {
+	  distEl.style.display = 'flex';
+	  distEl.innerHTML = `
+	    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+	    <span>${formatDistance(courtDist)}</span> from your location`;
+    } else {
+	  distEl.style.display = 'none';
+    }
+  }
   document.getElementById('detail-tags').innerHTML     = tagsHTML(c);
   document.getElementById('detail-note').textContent   = c.note;
 
@@ -1569,6 +1641,93 @@ function updateDetailWeather(area) {
     </div>
     <div class="weather-badge ${badge.cls}">${badge.text}</div>
   `;
+}
+
+// ═══════════════════════════════════════════════
+//  NEAREST SORT
+// ═══════════════════════════════════════════════
+let sortByNearest = false;
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(metres) {
+  if (metres < 1000) return `${Math.round(metres)}m away`;
+  return `${(metres / 1000).toFixed(1)}km away`;
+}
+
+function getDistance(court) {
+  if (state.userLat === null || state.userLng === null) return null;
+  return haversineDistance(state.userLat, state.userLng, court.lat, court.lng);
+}
+
+function toggleNearestSort() {
+  const btn        = document.getElementById('sort-nearest-btn');
+  const sortStatus = document.getElementById('sort-status');
+
+  if (sortByNearest) {
+    // Turn off
+    sortByNearest = false;
+    btn.classList.remove('active');
+    sortStatus.style.display = 'none';
+    renderList();
+    return;
+  }
+
+  // Turn on — request location if not already available
+  if (state.userLat !== null) {
+    sortByNearest = true;
+    btn.classList.add('active');
+    sortStatus.style.display = 'none';
+    renderList();
+    return;
+  }
+
+  // Need to get location first
+  sortStatus.style.display = 'block';
+  sortStatus.textContent   = 'Locating…';
+  btn.classList.add('active');
+
+  if (!navigator.geolocation) {
+    sortStatus.textContent = 'Location not supported';
+    btn.classList.remove('active');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      state.userLat  = pos.coords.latitude;
+      state.userLng  = pos.coords.longitude;
+      sortByNearest  = true;
+      sortStatus.style.display = 'none';
+
+      // Also place the user marker on the map
+      if (userMarker) map.removeLayer(userMarker);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="user-dot"><div class="user-dot-inner"></div></div>`,
+        iconSize: [16, 16], iconAnchor: [8, 8],
+      });
+      userMarker = L.marker([state.userLat, state.userLng], { icon, zIndexOffset: 1000 })
+        .addTo(map).bindPopup('You are here');
+
+      renderList();
+    },
+    () => {
+      sortStatus.textContent = 'Could not get location';
+      btn.classList.remove('active');
+      sortByNearest = false;
+    }
+  );
 }
 
 // ═══════════════════════════════════════════════
