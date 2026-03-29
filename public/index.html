@@ -703,6 +703,16 @@
 	.detail-distance svg { color: var(--muted); flex-shrink: 0; }
 	.detail-distance span { font-weight: 500; color: var(--green); }
   </style>
+	  <!-- PWA -->
+	<link rel="manifest" href="/manifest.json">
+	<meta name="theme-color" content="#0f1f2e" id="theme-color-meta">
+	<meta name="mobile-web-app-capable" content="yes">
+
+	<!-- iOS specific -->
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="SG Badminton">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
 </head>
 <body>
 <div id="app">
@@ -1875,6 +1885,10 @@ function toggleDarkMode() {
   localStorage.setItem('darkMode', isDark ? '1' : '0');
   document.getElementById('dark-icon').style.display  = isDark ? 'none'  : 'block';
   document.getElementById('light-icon').style.display = isDark ? 'block' : 'none';
+  // Update PWA theme color to match dark/light mode
+  document.getElementById('theme-color-meta').setAttribute(
+    'content', isDark ? '#060e16' : '#0f1f2e'
+  );
 }
 
 function initDarkMode() {
@@ -1919,6 +1933,18 @@ function openMap() {
 function closeMap() {
   document.getElementById('map-wrap').classList.remove('map-open');
 }
+
+// ═══════════════════════════════════════════════
+//  SERVICE WORKER REGISTRATION
+// ═══════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
 </script>
 </body>
 </html>

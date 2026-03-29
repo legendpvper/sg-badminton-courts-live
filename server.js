@@ -242,8 +242,9 @@ app.get("/api/reverse", async (req, res) => {
 });
 
 // Serve SPA
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
 app.listen(PORT, () => {
